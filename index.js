@@ -188,6 +188,36 @@ function drawBuildings() {
 }
 
 function drawGorilla(player) {
+  ctx.save();
+
+  const building =
+    player === 1
+      ? state.buildings.at(1) // Second building
+      : state.buildings.at(-2); // Second last building
+
+  ctx.translate(building.x + building.width / 2, building.height);
+
+  drawGorillaBody();
+  drawGorillaLeftArm(player);
+  drawGorillaRightArm(player);
+  drawGorillaFace(player);
+
+  ctx.restore();
+}
+
+function drawGorillaBody() {
+  // ...
+}
+
+function drawGorillaLeftArm(player) {
+  // ...
+}
+
+function drawGorillaRightArm(player) {
+  // ...
+}
+
+function drawGorillaFace(player) {
   // ...
 }
 
