@@ -149,6 +149,7 @@ function initializeBombPosition() {
   state.bomb.y = gorillaY + gorillaHandOffsetY;
   state.bomb.velocity.x = 0;
   state.bomb.velocity.y = 0;
+  state.bomb.rotation = 0;
 
   // Initialize the position of the grab area in HTML
   const grabAreaRadius = 15;
@@ -393,13 +394,28 @@ function drawBomb() {
     ctx.moveTo(0, 0);
     ctx.lineTo(state.bomb.velocity.x, state.bomb.velocity.y);
     ctx.stroke();
-  }
 
-  // Draw circle
-  ctx.fillStyle = 'white';
-  ctx.beginPath();
-  ctx.arc(0, 0, 6, 0, 2 * Math.PI);
-  ctx.fill();
+    // Draw circle
+    ctx.fillStyle = 'white';
+    ctx.beginPath();
+    ctx.arc(0, 0, 6, 0, 2 * Math.PI);
+    ctx.fill();
+  } else if (state.phase === 'in flight') {
+    // Draw rotated banana
+    ctx.fillStyle = 'white';
+    ctx.rotate(state.bomb.rotation);
+    ctx.beginPath();
+    ctx.moveTo(-8, -2);
+    ctx.quadraticCurveTo(0, 12, 8, -2);
+    ctx.quadraticCurveTo(0, 2, -8, -2);
+    ctx.fill();
+  } else {
+    // Draw circle
+    ctx.fillStyle = 'white';
+    ctx.beginPath();
+    ctx.arc(0, 0, 6, 0, 2 * Math.PI);
+    ctx.fill();
+  }
 
   // Restore transformation
   ctx.restore();
@@ -506,6 +522,10 @@ function moveBomb(elapsedTime) {
   // Calculate new position
   state.bomb.x += state.bomb.velocity.x * multiplier;
   state.bomb.y += state.bomb.velocity.y * multiplier;
+
+  // Rotate according to the direction
+  const direction = state.currentPlayer === 1 ? -1 : +1;
+  state.bomb.rotation += direction * 5 * multiplier;
 }
 
 function checkFrameHit() {
