@@ -510,27 +510,31 @@ function animate(timestamp) {
 
   const elapsedTime = timestamp - previousAnimationTimestamp;
 
-  moveBomb(elapsedTime);
+  // We break down every animation cycle into 10 tiny movements for greater hit detection precision
+  const hitDetectionPrecision = 10;
+  for (let i = 0; i < hitDetectionPrecision; i++) {
+    moveBomb(elapsedTime / hitDetectionPrecision);
 
-  // Hit detection
-  const miss = checkFrameHit() || checkBuildingHit(); // Bomb got off-screen or hit a building
-  const hit = false; // Bomb hit the enemy
+    // Hit detection
+    const miss = checkFrameHit() || checkBuildingHit(); // Bomb got off-screen or hit a building
+    const hit = false; // Bomb hit the enemy
 
-  // Handle the case when we hit a building or the bomb got off-screen
-  if (miss) {
-    state.currentPlayer = state.currentPlayer === 1 ? 2 : 1; // Switch players
-    state.phase = 'aiming';
-    initializeBombPosition();
+    // Handle the case when we hit a building or the bomb got off-screen
+    if (miss) {
+      state.currentPlayer = state.currentPlayer === 1 ? 2 : 1; // Switch players
+      state.phase = 'aiming';
+      initializeBombPosition();
 
-    draw();
-    return;
-  }
+      draw();
+      return;
+    }
 
-  // Handle the case when we hit the enemy
-  if (hit) {
-    // ...
+    // Handle the case when we hit the enemy
+    if (hit) {
+      // ...
 
-    return;
+      return;
+    }
   }
 
   draw();
