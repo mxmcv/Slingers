@@ -71,7 +71,35 @@ function generateBackgroundBuilding(index) {
 }
 
 function generateBuilding(index) {
-  // ...
+  const previousBuilding = state.buildings[index - 1];
+
+  const x = previousBuilding
+    ? previousBuilding.x + previousBuilding.width + 4
+    : 0;
+
+  const minWidth = 80;
+  const maxWidth = 130;
+  const width = minWidth + Math.random() * (maxWidth - minWidth);
+
+  const platformWithGorilla = index === 1 || index === 6;
+
+  const minHeight = 40;
+  const maxHeight = 300;
+  const minHeightGorilla = 30;
+  const maxHeightGorilla = 150;
+
+  const height = platformWithGorilla
+    ? minHeightGorilla + Math.random() * (maxHeightGorilla - minHeightGorilla)
+    : minHeight + Math.random() * (maxHeight - minHeight);
+
+  // Generate an array of booleans to show if the light is on or off in a room
+  const lightsOn = [];
+  for (let i = 0; i < 50; i++) {
+    const light = Math.random() <= 0.33 ? true : false;
+    lightsOn.push(light);
+  }
+
+  state.buildings.push({ x, width, height, lightsOn });
 }
 
 function initializeBombPosition() {
@@ -121,7 +149,42 @@ function drawBackgroundBuildings() {
 }
 
 function drawBuildings() {
-  // ...
+  state.buildings.forEach((building) => {
+    // Draw building
+    ctx.fillStyle = '#4A3C68';
+    ctx.fillRect(building.x, 0, building.width, building.height);
+
+    // Draw windows
+    const windowWidth = 10;
+    const windowHeight = 12;
+    const gap = 15;
+
+    const numberOfFloors = Math.ceil(
+      (building.height - gap) / (windowHeight + gap)
+    );
+    const numberOfRoomsPerFloor = Math.floor(
+      (building.width - gap) / (windowWidth + gap)
+    );
+
+    for (let floor = 0; floor < numberOfFloors; floor++) {
+      for (let room = 0; room < numberOfRoomsPerFloor; room++) {
+        if (building.lightsOn[floor * numberOfRoomsPerFloor + room]) {
+          ctx.save();
+
+          ctx.translate(building.x + gap, building.height - gap);
+          ctx.scale(1, -1);
+
+          const x = room * (windowWidth + gap);
+          const y = floor * (windowHeight + gap);
+
+          ctx.fillStyle = '#EBB6A2';
+          ctx.fillRect(x, y, windowWidth, windowHeight);
+
+          ctx.restore();
+        }
+      }
+    }
+  });
 }
 
 function drawGorilla(player) {
