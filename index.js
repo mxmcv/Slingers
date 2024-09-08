@@ -84,7 +84,19 @@ function draw() {
 }
 
 function drawBackground() {
-  // ...
+  const gradient = ctx.createLinearGradient(0, 0, 0, window.innerHeight);
+  gradient.addColorStop(1, '#F8BA85');
+  gradient.addColorStop(0, '#FFC28E');
+
+  // Draw sky
+  ctx.fillStyle = gradient;
+  ctx.fillRect(0, 0, window.innerWidth, window.innerHeight);
+
+  // Draw moon
+  ctx.fillStyle = 'rgba(255, 255, 255, 0.6)';
+  ctx.beginPath();
+  ctx.arc(300, 350, 60, 0, 2 * Math.PI);
+  ctx.fill();
 }
 
 function drawBackgroundBuildings() {
