@@ -206,7 +206,24 @@ function drawGorilla(player) {
 }
 
 function drawGorillaBody() {
-  // ...
+  ctx.fillStyle = 'black';
+
+  ctx.beginPath();
+  ctx.moveTo(0, 15);
+  ctx.lineTo(-7, 0);
+  ctx.lineTo(-20, 0);
+  ctx.lineTo(-17, 18);
+  ctx.lineTo(-20, 44);
+
+  ctx.lineTo(-11, 77);
+  ctx.lineTo(0, 84);
+  ctx.lineTo(11, 77);
+
+  ctx.lineTo(20, 44);
+  ctx.lineTo(17, 18);
+  ctx.lineTo(20, 0);
+  ctx.lineTo(7, 0);
+  ctx.fill();
 }
 
 function drawGorillaLeftArm(player) {
