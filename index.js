@@ -103,6 +103,22 @@ function generateBuilding(index) {
 }
 
 function initializeBombPosition() {
+  const building =
+    state.currentPlayer === 1
+      ? state.buildings.at(1) // Second building
+      : state.buildings.at(-2); // Second last building
+
+  const gorillaX = building.x + building.width / 2;
+  const gorillaY = building.height;
+
+  const gorillaHandOffsetX = state.currentPlayer === 1 ? -28 : 28;
+  const gorillaHandOffsetY = 107;
+
+  state.bomb.x = gorillaX + gorillaHandOffsetX;
+  state.bomb.y = gorillaY + gorillaHandOffsetY;
+  state.bomb.velocity.x = 0;
+  state.bomb.velocity.y = 0;
+
   // ...
 }
 
@@ -305,7 +321,19 @@ function drawGorillaFace(player) {
 }
 
 function drawBomb() {
-  //...
+  ctx.save();
+  ctx.translate(state.bomb.x, state.bomb.y);
+
+  // ...
+
+  // Draw circle
+  ctx.fillStyle = 'white';
+  ctx.beginPath();
+  ctx.arc(0, 0, 6, 0, 2 * Math.PI);
+  ctx.fill();
+
+  // Restore transformation
+  ctx.restore();
 }
 
 // Event handlers
