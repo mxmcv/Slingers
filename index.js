@@ -578,7 +578,22 @@ function checkBuildingHit() {
       state.bomb.x - 4 < building.x + building.width &&
       state.bomb.y - 4 < 0 + building.height
     ) {
-      // ...
+      // Check if the bomb is inside the blast hole of a previous impact
+      for (let j = 0; j < state.blastHoles.length; j++) {
+        const blastHole = state.blastHoles[j];
+
+        // Check how far the bomb is from the center of a previous blast hole
+        const horizontalDistance = state.bomb.x - blastHole.x;
+        const verticalDistance = state.bomb.y - blastHole.y;
+        const distance = Math.sqrt(
+          horizontalDistance ** 2 + verticalDistance ** 2
+        );
+        if (distance < blastHoleRadius) {
+          // The bomb is inside of the rectangle of a building,
+          // but a previous bomb already blew off this part of the building
+          return false;
+        }
+      }
 
       state.blastHoles.push({ x: state.bomb.x, y: state.bomb.y });
       return true; // Building hit
