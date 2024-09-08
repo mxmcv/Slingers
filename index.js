@@ -486,7 +486,7 @@ function animate(timestamp) {
   moveBomb(elapsedTime);
 
   // Hit detection
-  const miss = checkFrameHit() || false; // Bomb got off-screen or hit a building
+  const miss = checkFrameHit() || checkBuildingHit(); // Bomb got off-screen or hit a building
   const hit = false; // Bomb hit the enemy
 
   // Handle the case when we hit a building or the bomb got off-screen
@@ -536,6 +536,22 @@ function checkFrameHit() {
     state.bomb.x > window.innerWidth / state.scale
   ) {
     return true; // The bomb is off-screen
+  }
+}
+
+function checkBuildingHit() {
+  for (let i = 0; i < state.buildings.length; i++) {
+    const building = state.buildings[i];
+    if (
+      state.bomb.x + 4 > building.x &&
+      state.bomb.x - 4 < building.x + building.width &&
+      state.bomb.y - 4 < 0 + building.height
+    ) {
+      // ...
+
+      state.blastHoles.push({ x: state.bomb.x, y: state.bomb.y });
+      return true; // Building hit
+    }
   }
 }
 
