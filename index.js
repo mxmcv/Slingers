@@ -53,7 +53,21 @@ function newGame() {
 }
 
 function generateBackgroundBuilding(index) {
-  // ...
+  const previousBuilding = state.backgroundBuildings[index - 1];
+
+  const x = previousBuilding
+    ? previousBuilding.x + previousBuilding.width + 4
+    : -30;
+
+  const minWidth = 60;
+  const maxWidth = 110;
+  const width = minWidth + Math.random() * (maxWidth - minWidth);
+
+  const minHeight = 80;
+  const maxHeight = 350;
+  const height = minHeight + Math.random() * (maxHeight - minHeight);
+
+  state.backgroundBuildings.push({ x, width, height });
 }
 
 function generateBuilding(index) {
@@ -100,7 +114,10 @@ function drawBackground() {
 }
 
 function drawBackgroundBuildings() {
-  // ...
+  state.backgroundBuildings.forEach((building) => {
+    ctx.fillStyle = '#947285';
+    ctx.fillRect(building.x, 0, building.width, building.height);
+  });
 }
 
 function drawBuildings() {
