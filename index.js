@@ -5,6 +5,8 @@ let isDragging = false;
 let dragStartX = undefined;
 let dragStartY = undefined;
 
+let previousAnimationTimestamp = undefined;
+
 // ...
 
 // The main canvas element and its drawing context
@@ -451,11 +453,56 @@ window.addEventListener('mouseup', function () {
 });
 
 function throwBomb() {
-  // ...
+  state.phase = 'in flight';
+  previousAnimationTimestamp = undefined;
+  requestAnimationFrame(animate);
 }
 
 function animate(timestamp) {
-  // ...
+  if (previousAnimationTimestamp === undefined) {
+    previousAnimationTimestamp = timestamp;
+    requestAnimationFrame(animate);
+    return;
+  }
+
+  const elapsedTime = timestamp - previousAnimationTimestamp;
+
+  moveBomb(elapsedTime);
+
+  // Hit detection
+  const miss = false; // Bomb got off-screen or hit a building
+  const hit = false; // Bomb hit the enemy
+
+  // Handle the case when we hit a building or the bomb got off-screen
+  if (miss) {
+    // ...
+
+    return;
+  }
+
+  // Handle the case when we hit the enemy
+  if (hit) {
+    // ...
+
+    return;
+  }
+
+  draw();
+
+  // Continue the animation loop
+  previousAnimationTimestamp = timestamp;
+  requestAnimationFrame(animate);
+}
+
+function moveBomb(elapsedTime) {
+  const multiplier = elapsedTime / 200;
+
+  // Adjust trajectory by gravity
+  state.bomb.velocity.y -= 20 * multiplier;
+
+  // Calculate new position
+  state.bomb.x += state.bomb.velocity.x * multiplier;
+  state.bomb.y += state.bomb.velocity.y * multiplier;
 }
 
 // ...
