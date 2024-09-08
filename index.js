@@ -9,6 +9,8 @@ let previousAnimationTimestamp = undefined;
 
 // ...
 
+const blastHoleRadius = 18;
+
 // The main canvas element and its drawing context
 const canvas = document.getElementById('game');
 canvas.width = window.innerWidth;
@@ -170,7 +172,7 @@ function draw() {
   // Draw scene
   drawBackground();
   drawBackgroundBuildings();
-  drawBuildings();
+  drawBuildingsWithBlastHoles();
   drawGorilla(1);
   drawGorilla(2);
   drawBomb();
@@ -210,6 +212,31 @@ function drawBackgroundBuildings() {
     ctx.fillStyle = '#947285';
     ctx.fillRect(building.x, 0, building.width, building.height);
   });
+}
+
+function drawBuildingsWithBlastHoles() {
+  ctx.save();
+
+  state.blastHoles.forEach((blastHole) => {
+    ctx.beginPath();
+
+    // Outer shape clockwise
+    ctx.rect(
+      0,
+      0,
+      window.innerWidth / state.scale,
+      window.innerHeight / state.scale
+    );
+
+    // Inner shape counterclockwise
+    ctx.arc(blastHole.x, blastHole.y, blastHoleRadius, 0, 2 * Math.PI, true);
+
+    ctx.clip();
+  });
+
+  drawBuildings();
+
+  ctx.restore();
 }
 
 function drawBuildings() {
