@@ -1,6 +1,10 @@
 // The state of the game
 let state = {};
 
+let isDragging = false;
+let dragStartX = undefined;
+let dragStartY = undefined;
+
 // ...
 
 // The main canvas element and its drawing context
@@ -378,7 +382,51 @@ function drawBomb() {
 }
 
 // Event handlers
-// ...
+bombGrabAreaDOM.addEventListener('mousedown', function (e) {
+  if (state.phase === 'aiming') {
+    isDragging = true;
+    dragStartX = e.clientX;
+    dragStartY = e.clientY;
+    document.body.style.cursor = 'grabbing';
+  }
+});
+
+window.addEventListener('mousemove', function (e) {
+  if (isDragging) {
+    let deltaX = e.clientX - dragStartX;
+    let deltaY = e.clientY - dragStartY;
+
+    state.bomb.velocity.x = -deltaX;
+    state.bomb.velocity.y = deltaY;
+    setInfo(deltaX, deltaY);
+
+    draw();
+  }
+});
+
+// Set values on the info panel
+function setInfo(deltaX, deltaY) {
+  const hypotenuse = Math.sqrt(deltaX ** 2 + deltaY ** 2);
+  const angleInRadians = Math.asin(deltaY / hypotenuse);
+  const angleInDegrees = (angleInRadians / Math.PI) * 180;
+
+  if (state.currentPlayer === 1) {
+    angle1DOM.innerText = Math.round(angleInDegrees);
+    velocity1DOM.innerText = Math.round(hypotenuse);
+  } else {
+    angle2DOM.innerText = Math.round(angleInDegrees);
+    velocity2DOM.innerText = Math.round(hypotenuse);
+  }
+}
+
+window.addEventListener('mouseup', function () {
+  if (isDragging) {
+    isDragging = false;
+    document.body.style.cursor = 'default';
+
+    throwBomb();
+  }
+});
 
 function throwBomb() {
   // ...
