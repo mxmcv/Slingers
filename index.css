@@ -20,3 +20,12 @@ body {
   right: 25px;
   text-align: right;
 }
+
+#bomb-grab-area {
+  position: absolute;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background-color: transparent;
+  cursor: grab;
+}
