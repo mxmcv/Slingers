@@ -28,6 +28,11 @@ const velocity2DOM = document.querySelector('#info-right .velocity');
 // The bomb's grab area
 const bombGrabAreaDOM = document.getElementById('bomb-grab-area');
 
+// Congratulations panel
+const congratulationsDOM = document.getElementById('congratulations');
+const winnerDOM = document.getElementById('winner');
+const newGameButtonDOM = document.getElementById('new-game');
+
 // ...
 
 newGame();
@@ -65,7 +70,12 @@ function newGame() {
   calculateScale();
   initializeBombPosition();
 
-  // ...
+  // Reset HTML elements
+  congratulationsDOM.style.visibility = 'hidden';
+  angle1DOM.innerText = 0;
+  velocity1DOM.innerText = 0;
+  angle2DOM.innerText = 0;
+  velocity2DOM.innerText = 0;
 
   draw();
 }
@@ -632,7 +642,8 @@ function checkGorillaHit() {
 }
 
 function announceWinner() {
-  // ...
+  winnerDOM.innerText = `Player ${state.currentPlayer}`;
+  congratulationsDOM.style.visibility = 'visible';
 }
 
-// ...
+newGameButtonDOM.addEventListener('click', newGame);
