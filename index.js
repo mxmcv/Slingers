@@ -517,7 +517,7 @@ function animate(timestamp) {
 
     // Hit detection
     const miss = checkFrameHit() || checkBuildingHit(); // Bomb got off-screen or hit a building
-    const hit = false; // Bomb hit the enemy
+    const hit = checkGorillaHit(); // Bomb hit the enemy
 
     // Handle the case when we hit a building or the bomb got off-screen
     if (miss) {
@@ -531,8 +531,10 @@ function animate(timestamp) {
 
     // Handle the case when we hit the enemy
     if (hit) {
-      // ...
+      state.phase = 'celebrating';
+      announceWinner();
 
+      draw();
       return;
     }
   }
@@ -599,6 +601,38 @@ function checkBuildingHit() {
       return true; // Building hit
     }
   }
+}
+
+function checkGorillaHit() {
+  const enemyPlayer = state.currentPlayer === 1 ? 2 : 1;
+  const enemyBuilding =
+    enemyPlayer === 1
+      ? state.buildings.at(1) // Second building
+      : state.buildings.at(-2); // Second last building
+
+  ctx.save();
+
+  ctx.translate(
+    enemyBuilding.x + enemyBuilding.width / 2,
+    enemyBuilding.height
+  );
+
+  drawGorillaBody();
+  let hit = ctx.isPointInPath(state.bomb.x, state.bomb.y);
+
+  drawGorillaLeftArm(enemyPlayer);
+  hit ||= ctx.isPointInStroke(state.bomb.x, state.bomb.y);
+
+  drawGorillaRightArm(enemyPlayer);
+  hit ||= ctx.isPointInStroke(state.bomb.x, state.bomb.y);
+
+  ctx.restore();
+
+  return hit;
+}
+
+function announceWinner() {
+  // ...
 }
 
 // ...
