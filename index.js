@@ -470,13 +470,16 @@ function animate(timestamp) {
   moveBomb(elapsedTime);
 
   // Hit detection
-  const miss = false; // Bomb got off-screen or hit a building
+  const miss = checkFrameHit() || false; // Bomb got off-screen or hit a building
   const hit = false; // Bomb hit the enemy
 
   // Handle the case when we hit a building or the bomb got off-screen
   if (miss) {
-    // ...
+    state.currentPlayer = state.currentPlayer === 1 ? 2 : 1; // Switch players
+    state.phase = 'aiming';
+    initializeBombPosition();
 
+    draw();
     return;
   }
 
@@ -503,6 +506,17 @@ function moveBomb(elapsedTime) {
   // Calculate new position
   state.bomb.x += state.bomb.velocity.x * multiplier;
   state.bomb.y += state.bomb.velocity.y * multiplier;
+}
+
+function checkFrameHit() {
+  // Stop throw animation once the bomb gets out of the left, bottom, or right edge of the screen
+  if (
+    state.bomb.y < 0 ||
+    state.bomb.x < 0 ||
+    state.bomb.x > window.innerWidth / state.scale
+  ) {
+    return true; // The bomb is off-screen
+  }
 }
 
 // ...
