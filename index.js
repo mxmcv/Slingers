@@ -773,6 +773,29 @@ function announceWinner() {
 
 newGameButtonDOM.addEventListener('click', newGame);
 
+function generateWindSpeed() {
+  // Generate a random number between -10 and +10
+  return -10 + Math.random() * 20;
+}
+
+function setWindMillRotation() {
+  const rotationSpeed = Math.abs(50 / state.windSpeed);
+  windmillHeadDOM.style.animationDirection =
+    state.windSpeed > 0 ? 'normal' : 'reverse';
+  windmillHeadDOM.style.animationDuration = `${rotationSpeed}s`;
+
+  windSpeedDOM.innerText = Math.round(state.windSpeed);
+}
+
+window.addEventListener('mousemove', function (e) {
+  settingsDOM.style.opacity = 1;
+  info1DOM.style.opacity = 1;
+  info2DOM.style.opacity = 1;
+});
+
+const enterFullscreen = document.getElementById('enter-fullscreen');
+const exitFullscreen = document.getElementById('exit-fullscreen');
+
 function toggleFullscreen() {
   if (!document.fullscreenElement) {
     document.documentElement.requestFullscreen();
