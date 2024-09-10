@@ -773,6 +773,38 @@ function announceWinner() {
 
 newGameButtonDOM.addEventListener('click', newGame);
 
+singlePlayerButtonDOM.forEach((button) =>
+  button.addEventListener('click', () => {
+    settings.numberOfPlayers = 1;
+    gameModeDOM.innerHTML = 'Player vs. Computer';
+    name1DOM.innerText = 'Player';
+    name2DOM.innerText = 'Computer';
+
+    newGame();
+  })
+);
+
+twoPlayersButtonDOM.forEach((button) =>
+  button.addEventListener('click', () => {
+    settings.numberOfPlayers = 2;
+    gameModeDOM.innerHTML = 'Player vs. Player';
+    name1DOM.innerText = 'Player 1';
+    name2DOM.innerText = 'Player 2';
+
+    newGame();
+  })
+);
+
+autoPlayButtonDOM.forEach((button) =>
+  button.addEventListener('click', () => {
+    settings.numberOfPlayers = 0;
+    name1DOM.innerText = 'Computer 1';
+    name2DOM.innerText = 'Computer 2';
+
+    newGame();
+  })
+);
+
 function generateWindSpeed() {
   // Generate a random number between -10 and +10
   return -10 + Math.random() * 20;
