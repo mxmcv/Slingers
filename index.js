@@ -6,26 +6,51 @@ let dragStartX = undefined;
 let dragStartY = undefined;
 
 let previousAnimationTimestamp = undefined;
+let animationFrameRequestID = undefined;
+let delayTimeoutID = undefined;
 
-let numberOfPlayers = 1;
 let simulationMode = false;
 let simulationImpact = {};
+
+const darkModeMediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+
+// Settings
+const settings = {
+  numberOfPlayers: 1, // 0 means two computers are playing against each other
+  mode: darkModeMediaQuery.matches ? 'dark' : 'light',
+};
 
 const blastHoleRadius = 18;
 
 // The main canvas element and its drawing context
 const canvas = document.getElementById('game');
-canvas.width = window.innerWidth;
-canvas.height = window.innerHeight;
+canvas.width = window.innerWidth * window.devicePixelRatio;
+canvas.height = window.innerHeight * window.devicePixelRatio;
+canvas.style.width = window.innerWidth + 'px';
+canvas.style.height = window.innerHeight + 'px';
 const ctx = canvas.getContext('2d');
 
+// Windmill
+const windmillDOM = document.getElementById('windmill');
+const windmillHeadDOM = document.getElementById('windmill-head');
+const windInfoDOM = document.getElementById('wind-info');
+const windSpeedDOM = document.getElementById('wind-speed');
+
 // Left info panel
+const info1DOM = document.getElementById('info-left');
+const name1DOM = document.querySelector('#info-left .name');
 const angle1DOM = document.querySelector('#info-left .angle');
 const velocity1DOM = document.querySelector('#info-left .velocity');
 
 // Right info panel
+const info2DOM = document.getElementById('info-right');
+const name2DOM = document.querySelector('#info-right .name');
 const angle2DOM = document.querySelector('#info-right .angle');
 const velocity2DOM = document.querySelector('#info-right .velocity');
+
+// Instructions panel
+const instructionsDOM = document.getElementById('instructions');
+const gameModeDOM = document.getElementById('game-mode');
 
 // The bomb's grab area
 const bombGrabAreaDOM = document.getElementById('bomb-grab-area');
@@ -33,9 +58,34 @@ const bombGrabAreaDOM = document.getElementById('bomb-grab-area');
 // Congratulations panel
 const congratulationsDOM = document.getElementById('congratulations');
 const winnerDOM = document.getElementById('winner');
-const newGameButtonDOM = document.getElementById('new-game');
 
-// ...
+// Settings toolbar
+const settingsDOM = document.getElementById('settings');
+const singlePlayerButtonDOM = document.querySelectorAll('.single-player');
+const twoPlayersButtonDOM = document.querySelectorAll('.two-players');
+const autoPlayButtonDOM = document.querySelectorAll('.auto-play');
+const colorModeButtonDOM = document.getElementById('color-mode');
+
+colorModeButtonDOM.addEventListener('click', () => {
+  if (settings.mode === 'dark') {
+    settings.mode = 'light';
+    colorModeButtonDOM.innerText = 'Dark Mode';
+  } else {
+    settings.mode = 'dark';
+    colorModeButtonDOM.innerText = 'Light Mode';
+  }
+  draw();
+});
+
+darkModeMediaQuery.addEventListener('change', (e) => {
+  settings.mode = e.matches ? 'dark' : 'light';
+  if (settings.mode === 'dark') {
+    colorModeButtonDOM.innerText = 'Light Mode';
+  } else {
+    colorModeButtonDOM.innerText = 'Dark Mode';
+  }
+  draw();
+});
 
 newGame();
 
@@ -45,11 +95,13 @@ function newGame() {
     phase: 'aiming', // aiming | in flight | celebrating
     currentPlayer: 1,
     round: 1,
+    windSpeed: generateWindSpeed(),
     bomb: {
       x: undefined,
       y: undefined,
       rotation: 0,
       velocity: { x: 0, y: 0 },
+      highlight: true,
     },
 
     // Buildings
@@ -57,11 +109,21 @@ function newGame() {
     buildings: [],
     blastHoles: [],
 
+    stars: [],
+
     scale: 1,
+    shift: 0,
   };
 
+  // Generate stars
+  for (let i = 0; i < (window.innerWidth * window.innerHeight) / 12000; i++) {
+    const x = Math.floor(Math.random() * window.innerWidth);
+    const y = Math.floor(Math.random() * window.innerHeight);
+    state.stars.push({ x, y });
+  }
+
   // Generate background buildings
-  for (let i = 0; i < 11; i++) {
+  for (let i = 0; i < 17; i++) {
     generateBackgroundBuilding(i);
   }
 
@@ -70,21 +132,58 @@ function newGame() {
     generateBuilding(i);
   }
 
-  calculateScale();
+  calculateScaleAndShift();
   initializeBombPosition();
+  initializeWindmillPosition();
+  setWindMillRotation();
+
+  // Cancel any ongoing animation and timeout
+  cancelAnimationFrame(animationFrameRequestID);
+  clearTimeout(delayTimeoutID);
 
   // Reset HTML elements
-  congratulationsDOM.style.visibility = 'hidden';
+  if (settings.numberOfPlayers > 0) {
+    showInstructions();
+  } else {
+    hideInstructions();
+  }
+  hideCongratulations();
   angle1DOM.innerText = 0;
   velocity1DOM.innerText = 0;
   angle2DOM.innerText = 0;
   velocity2DOM.innerText = 0;
 
+  // Reset simulation mode
+  simulationMode = false;
+  simulationImpact = {};
+
   draw();
 
-  if (numberOfPlayers === 0) {
+  if (settings.numberOfPlayers === 0) {
     computerThrow();
   }
+}
+
+function showInstructions() {
+  singlePlayerButtonDOM.checked = true;
+  instructionsDOM.style.opacity = 1;
+  instructionsDOM.style.visibility = 'visible';
+}
+
+function hideInstructions() {
+  state.bomb.highlight = false;
+  instructionsDOM.style.opacity = 0;
+  instructionsDOM.style.visibility = 'hidden';
+}
+
+function showCongratulations() {
+  congratulationsDOM.style.opacity = 1;
+  congratulationsDOM.style.visibility = 'visible';
+}
+
+function hideCongratulations() {
+  congratulationsDOM.style.opacity = 0;
+  congratulationsDOM.style.visibility = 'hidden';
 }
 
 function generateBackgroundBuilding(index) {
@@ -92,15 +191,21 @@ function generateBackgroundBuilding(index) {
 
   const x = previousBuilding
     ? previousBuilding.x + previousBuilding.width + 4
-    : -30;
+    : -300;
 
   const minWidth = 60;
   const maxWidth = 110;
   const width = minWidth + Math.random() * (maxWidth - minWidth);
 
+  const smallerBuilding = index < 4 || index >= 13;
+
   const minHeight = 80;
   const maxHeight = 350;
-  const height = minHeight + Math.random() * (maxHeight - minHeight);
+  const smallMinHeight = 20;
+  const smallMaxHeight = 150;
+  const height = smallerBuilding
+    ? smallMinHeight + Math.random() * (smallMaxHeight - smallMinHeight)
+    : minHeight + Math.random() * (maxHeight - minHeight);
 
   state.backgroundBuildings.push({ x, width, height });
 }
@@ -116,14 +221,14 @@ function generateBuilding(index) {
   const maxWidth = 130;
   const width = minWidth + Math.random() * (maxWidth - minWidth);
 
-  const platformWithGorilla = index === 1 || index === 6;
+  const smallerBuilding = index <= 1 || index >= 6;
 
   const minHeight = 40;
   const maxHeight = 300;
   const minHeightGorilla = 30;
   const maxHeightGorilla = 150;
 
-  const height = platformWithGorilla
+  const height = smallerBuilding
     ? minHeightGorilla + Math.random() * (maxHeightGorilla - minHeightGorilla)
     : minHeight + Math.random() * (maxHeight - minHeight);
 
@@ -137,18 +242,30 @@ function generateBuilding(index) {
   state.buildings.push({ x, width, height, lightsOn });
 }
 
-function calculateScale() {
+function calculateScaleAndShift() {
   const lastBuilding = state.buildings.at(-1);
   const totalWidthOfTheCity = lastBuilding.x + lastBuilding.width;
 
-  state.scale = window.innerWidth / totalWidthOfTheCity;
+  const horizontalScale = window.innerWidth / totalWidthOfTheCity ?? 1;
+  const verticalScale = window.innerHeight / 500;
+
+  state.scale = Math.min(horizontalScale, verticalScale);
+
+  const sceneNeedsToBeShifted = horizontalScale > verticalScale;
+
+  state.shift = sceneNeedsToBeShifted
+    ? (window.innerWidth - totalWidthOfTheCity * state.scale) / 2
+    : 0;
 }
 
 window.addEventListener('resize', () => {
-  canvas.width = window.innerWidth;
-  canvas.height = window.innerHeight;
-  calculateScale();
+  canvas.width = window.innerWidth * window.devicePixelRatio;
+  canvas.height = window.innerHeight * window.devicePixelRatio;
+  canvas.style.width = window.innerWidth + 'px';
+  canvas.style.height = window.innerHeight + 'px';
+  calculateScaleAndShift();
   initializeBombPosition();
+  initializeWindmillPosition();
   draw();
 });
 
@@ -172,22 +289,46 @@ function initializeBombPosition() {
 
   // Initialize the position of the grab area in HTML
   const grabAreaRadius = 15;
-  const left = state.bomb.x * state.scale - grabAreaRadius;
+  const left = state.bomb.x * state.scale + state.shift - grabAreaRadius;
   const bottom = state.bomb.y * state.scale - grabAreaRadius;
+
   bombGrabAreaDOM.style.left = `${left}px`;
   bombGrabAreaDOM.style.bottom = `${bottom}px`;
+}
+
+function initializeWindmillPosition() {
+  // Move windmill into position
+  const lastBuilding = state.buildings.at(-1);
+  let rooftopY = lastBuilding.height * state.scale;
+  let rooftopX =
+    (lastBuilding.x + lastBuilding.width / 2) * state.scale + state.shift;
+
+  windmillDOM.style.bottom = `${rooftopY}px`;
+  windmillDOM.style.left = `${rooftopX - 100}px`;
+
+  windmillDOM.style.scale = state.scale;
+
+  windInfoDOM.style.bottom = `${rooftopY}px`;
+  windInfoDOM.style.left = `${rooftopX - 50}px`;
 }
 
 function draw() {
   ctx.save();
 
+  ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
+
+  drawBackgroundSky();
+
   // Flip coordinate system upside down
   ctx.translate(0, window.innerHeight);
   ctx.scale(1, -1);
+
+  // Scale and shift view to center
+  ctx.translate(state.shift, 0);
   ctx.scale(state.scale, state.scale);
 
   // Draw scene
-  drawBackground();
+  drawBackgroundMoon();
   drawBackgroundBuildings();
   drawBuildingsWithBlastHoles();
   drawGorilla(1);
@@ -198,35 +339,52 @@ function draw() {
   ctx.restore();
 }
 
-function drawBackground() {
-  const gradient = ctx.createLinearGradient(
-    0,
-    0,
-    0,
-    window.innerHeight / state.scale
-  );
-  gradient.addColorStop(1, '#F8BA85');
-  gradient.addColorStop(0, '#FFC28E');
+function drawBackgroundSky() {
+  const gradient = ctx.createLinearGradient(0, 0, 0, window.innerHeight);
+  if (settings.mode === 'dark') {
+    gradient.addColorStop(1, '#27507F');
+    gradient.addColorStop(0, '#58A8D8');
+  } else {
+    gradient.addColorStop(1, '#F8BA85');
+    gradient.addColorStop(0, '#FFC28E');
+  }
 
   // Draw sky
   ctx.fillStyle = gradient;
-  ctx.fillRect(
-    0,
-    0,
-    window.innerWidth / state.scale,
-    window.innerHeight / state.scale
-  );
+  ctx.fillRect(0, 0, window.innerWidth, window.innerHeight);
 
-  // Draw moon
-  ctx.fillStyle = 'rgba(255, 255, 255, 0.6)';
-  ctx.beginPath();
-  ctx.arc(300, 350, 60, 0, 2 * Math.PI);
-  ctx.fill();
+  // Draw stars
+  if (settings.mode === 'dark') {
+    ctx.fillStyle = 'white';
+    state.stars.forEach((star) => {
+      ctx.fillRect(star.x, star.y, 1, 1);
+    });
+  }
+}
+
+function drawBackgroundMoon() {
+  if (settings.mode === 'dark') {
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.6)';
+    ctx.beginPath();
+    ctx.arc(
+      window.innerWidth / state.scale - state.shift - 200,
+      window.innerHeight / state.scale - 100,
+      30,
+      0,
+      2 * Math.PI
+    );
+    ctx.fill();
+  } else {
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.6)';
+    ctx.beginPath();
+    ctx.arc(300, 350, 60, 0, 2 * Math.PI);
+    ctx.fill();
+  }
 }
 
 function drawBackgroundBuildings() {
   state.backgroundBuildings.forEach((building) => {
-    ctx.fillStyle = '#947285';
+    ctx.fillStyle = settings.mode === 'dark' ? '#254D7E' : '#947285';
     ctx.fillRect(building.x, 0, building.width, building.height);
   });
 }
@@ -259,7 +417,7 @@ function drawBuildingsWithBlastHoles() {
 function drawBuildings() {
   state.buildings.forEach((building) => {
     // Draw building
-    ctx.fillStyle = '#4A3C68';
+    ctx.fillStyle = settings.mode === 'dark' ? '#152A47' : '#4A3C68';
     ctx.fillRect(building.x, 0, building.width, building.height);
 
     // Draw windows
@@ -285,7 +443,7 @@ function drawBuildings() {
           const x = room * (windowWidth + gap);
           const y = floor * (windowHeight + gap);
 
-          ctx.fillStyle = '#EBB6A2';
+          ctx.fillStyle = settings.mode === 'dark' ? '#5F76AB' : '#EBB6A2';
           ctx.fillRect(x, y, windowWidth, windowHeight);
 
           ctx.restore();
@@ -383,7 +541,7 @@ function drawGorillaRightArm(player) {
 
 function drawGorillaFace(player) {
   // Face
-  ctx.fillStyle = 'lightgray';
+  ctx.fillStyle = settings.mode === 'dark' ? 'gray' : 'lightgray';
   ctx.beginPath();
   ctx.arc(0, 63, 9, 0, 2 * Math.PI);
   ctx.moveTo(-3.5, 70);
@@ -426,8 +584,12 @@ function drawGorillaFace(player) {
 function drawGorillaThoughtBubbles(player) {
   if (state.phase === 'aiming') {
     const currentPlayerIsComputer =
-      (numberOfPlayers === 0 && state.currentPlayer === 1 && player === 1) ||
-      (numberOfPlayers !== 2 && state.currentPlayer === 2 && player === 2);
+      (settings.numberOfPlayers === 0 &&
+        state.currentPlayer === 1 &&
+        player === 1) ||
+      (settings.numberOfPlayers !== 2 &&
+        state.currentPlayer === 2 &&
+        player === 2);
 
     if (currentPlayerIsComputer) {
       ctx.save();
@@ -491,10 +653,39 @@ function drawBomb() {
 
   // Restore transformation
   ctx.restore();
+
+  // Indicator showing if the bomb is above the screen
+  if (state.bomb.y > window.innerHeight / state.scale) {
+    ctx.beginPath();
+    ctx.strokeStyle = 'white';
+    const distance = state.bomb.y - window.innerHeight / state.scale;
+    ctx.moveTo(state.bomb.x, window.innerHeight / state.scale - 10);
+    ctx.lineTo(state.bomb.x, window.innerHeight / state.scale - distance);
+    ctx.moveTo(state.bomb.x, window.innerHeight / state.scale - 10);
+    ctx.lineTo(state.bomb.x - 5, window.innerHeight / state.scale - 15);
+    ctx.moveTo(state.bomb.x, window.innerHeight / state.scale - 10);
+    ctx.lineTo(state.bomb.x + 5, window.innerHeight / state.scale - 15);
+    ctx.stroke();
+  }
+
+  // Indicator showing the starting position of the bomb
+  if (state.bomb.highlight) {
+    ctx.beginPath();
+    ctx.strokeStyle = 'white';
+    ctx.lineWidth = 2;
+    ctx.moveTo(state.bomb.x, state.bomb.y + 20);
+    ctx.lineTo(state.bomb.x, state.bomb.y + 120);
+    ctx.moveTo(state.bomb.x, state.bomb.y + 20);
+    ctx.lineTo(state.bomb.x - 5, state.bomb.y + 25);
+    ctx.moveTo(state.bomb.x, state.bomb.y + 20);
+    ctx.lineTo(state.bomb.x + 5, state.bomb.y + 25);
+    ctx.stroke();
+  }
 }
 
 // Event handlers
 bombGrabAreaDOM.addEventListener('mousedown', function (e) {
+  hideInstructions();
   if (state.phase === 'aiming') {
     isDragging = true;
     dragStartX = e.clientX;
@@ -553,7 +744,7 @@ function computerThrow() {
   draw();
 
   // Make it look like the computer is thinking for a second
-  setTimeout(throwBomb, 1000);
+  delayTimeoutID = setTimeout(throwBomb, 1000);
 }
 
 // Simulate multiple throws and pick the best
@@ -575,9 +766,9 @@ function runSimulations(numberOfSimulations) {
 
   for (let i = 0; i < numberOfSimulations; i++) {
     // Pick a random angle and velocity
-    const angleInDegrees = 0 + Math.random() * 90;
+    const angleInDegrees = -10 + Math.random() * 100;
     const angleInRadians = (angleInDegrees / 180) * Math.PI;
-    const velocity = 40 + Math.random() * 100;
+    const velocity = 40 + Math.random() * 130;
 
     // Calculate the horizontal and vertical velocity
     const direction = state.currentPlayer === 1 ? 1 : -1;
@@ -613,20 +804,20 @@ function throwBomb() {
   } else {
     state.phase = 'in flight';
     previousAnimationTimestamp = undefined;
-    requestAnimationFrame(animate);
+    animationFrameRequestID = requestAnimationFrame(animate);
   }
 }
 
 function animate(timestamp) {
   if (previousAnimationTimestamp === undefined) {
     previousAnimationTimestamp = timestamp;
-    requestAnimationFrame(animate);
+    animationFrameRequestID = requestAnimationFrame(animate);
     return;
   }
 
   const elapsedTime = timestamp - previousAnimationTimestamp;
 
-  // We break down every animation cycle into 10 tiny movements for greater hit detection precision
+  // Break down every animation cycle into 10 tiny movements for greater hit detection precision
   const hitDetectionPrecision = 10;
   for (let i = 0; i < hitDetectionPrecision; i++) {
     moveBomb(elapsedTime / hitDetectionPrecision);
@@ -640,7 +831,7 @@ function animate(timestamp) {
       return; // Simulation ended, return from the loop
     }
 
-    // Handle the case when we hit a building or the bomb got off-screen
+    // Building or the bomb went off-screen
     if (miss) {
       state.currentPlayer = state.currentPlayer === 1 ? 2 : 1; // Switch players
       if (state.currentPlayer === 1) state.round++;
@@ -650,15 +841,15 @@ function animate(timestamp) {
       draw();
 
       const computerThrowsNext =
-        numberOfPlayers === 0 ||
-        (numberOfPlayers === 1 && state.currentPlayer === 2);
+        settings.numberOfPlayers === 0 ||
+        (settings.numberOfPlayers === 1 && state.currentPlayer === 2);
 
       if (computerThrowsNext) setTimeout(computerThrow, 50);
 
       return;
     }
 
-    // Handle the case when we hit the enemy
+    // Hit the enemy
     if (hit) {
       state.phase = 'celebrating';
       announceWinner();
@@ -675,12 +866,15 @@ function animate(timestamp) {
   if (simulationMode) {
     animate(timestamp + 16);
   } else {
-    requestAnimationFrame(animate);
+    animationFrameRequestID = requestAnimationFrame(animate);
   }
 }
 
 function moveBomb(elapsedTime) {
   const multiplier = elapsedTime / 200;
+
+  // Adjust trajectory by wind
+  state.bomb.velocity.x += state.windSpeed * multiplier;
 
   // Adjust trajectory by gravity
   state.bomb.velocity.y -= 20 * multiplier;
@@ -695,11 +889,11 @@ function moveBomb(elapsedTime) {
 }
 
 function checkFrameHit() {
-  // Stop throw animation once the bomb gets out of the left, bottom, or right edge of the screen
+  // Stop throw animation once the bomb goes out on the left, bottom, or right edge of the screen
   if (
     state.bomb.y < 0 ||
-    state.bomb.x < 0 ||
-    state.bomb.x > window.innerWidth / state.scale
+    state.bomb.x < -state.shift / state.scale ||
+    state.bomb.x > (window.innerWidth - state.shift) / state.scale
   ) {
     return true; // The bomb is off-screen
   }
@@ -767,11 +961,17 @@ function checkGorillaHit() {
 }
 
 function announceWinner() {
-  winnerDOM.innerText = `Player ${state.currentPlayer}`;
-  congratulationsDOM.style.visibility = 'visible';
+  if (settings.numberOfPlayers === 0) {
+    winnerDOM.innerText = `Computer ${state.currentPlayer}`;
+  } else if (settings.numberOfPlayers === 1 && state.currentPlayer === 1) {
+    winnerDOM.innerText = `You`;
+  } else if (settings.numberOfPlayers === 1 && state.currentPlayer === 2) {
+    winnerDOM.innerText = `Computer`;
+  } else {
+    winnerDOM.innerText = `Player ${state.currentPlayer}`;
+  }
+  showCongratulations();
 }
-
-newGameButtonDOM.addEventListener('click', newGame);
 
 singlePlayerButtonDOM.forEach((button) =>
   button.addEventListener('click', () => {
