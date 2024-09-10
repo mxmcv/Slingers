@@ -772,3 +772,15 @@ function announceWinner() {
 }
 
 newGameButtonDOM.addEventListener('click', newGame);
+
+function toggleFullscreen() {
+  if (!document.fullscreenElement) {
+    document.documentElement.requestFullscreen();
+    enterFullscreen.setAttribute('stroke', 'transparent');
+    exitFullscreen.setAttribute('stroke', 'white');
+  } else {
+    document.exitFullscreen();
+    enterFullscreen.setAttribute('stroke', 'white');
+    exitFullscreen.setAttribute('stroke', 'transparent');
+  }
+}
